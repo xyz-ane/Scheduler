@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>University Class Scheduler</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7f2e8;
+        }
+
+        .login-container, .scheduler-container, .admin-dashboard-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        h1 {
+            color: maroon;
+            margin-bottom: 10px;
+        }
+
+        .banner {
+            width: 100%;
+            background-color: maroon;
+            color: gold;
+            padding: 10px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid maroon;
+        }
+
+        .show-password {
+            margin-bottom: 15px;
+        }
+
+        button {
+            background-color: maroon;
+            color: gold;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+
+        table {
+            width: 90%;
+            border-collapse: separate;
+            border-spacing: 10px;
+            margin-top: 30px;
+        }
+
+        th, td {
+            padding: 20px;
+            text-align: center;
+            background: white;
+            border-radius: 20px;
+            font-size: 16px;
+        }
+
+        th {
+            background-color: maroon;
+            color: gold;
+        }
+
+        .available {
+            background-color: #d0f0c0;
+        }
+
+        .own-schedule {
+            background-color: #a7d7c5;
+        }
+
+        .taken {
+            background-color: #f7b2ad;
+        }
+
+        .pending {
+            background-color: #a0c4ff;
+        }
+
+        .action-buttons {
+            margin-top: 10px;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: gold;
+            color: maroon;
+            font-weight: bold;
+        }
+
+        .approve-btn, .reject-btn {
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .approve-btn {
+            background-color: #5cb85c;
+            color: white;
+        }
+
+        .reject-btn {
+            background-color: #d9534f;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="banner" class="banner" style="display:none;">
+    University Scheduler
+</div>
+
+<div id="loginPage" class="login-container" style="background: url('https://the-post-assets.sgp1.digitaloceanspaces.com/2023/03/DHVSU_thumbnail.png') no-repeat center center / cover;">
+    <div class="login-box">
+        <h1>Log In</h1>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <div class="show-password">
+            <input type="checkbox" id="showPass"> Show Password
+        </div>
+        <button onclick="login()">Login</button>
+    </div>
+</div>
+
+<div id="schedulerPage" class="scheduler-container" style="display:none;">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+    <table id="scheduleTable">
+        <thead>
+            <tr>
+                <th>Time/Day</th>
+                <th>Monday</th>
+                <th>Tuesday</th>
+                <th>Wednesday</th>
+                <th>Thursday</th>
+                <th>Friday</th>
+            </tr>
+        </thead>
+        <tbody id="scheduleBody">
+            <!-- schedule will load here -->
+        </tbody>
+    </table>
+</div>
+
+<!-- Admin Dashboard -->
+<div id="adminDashboardPage" class="admin-dashboard-container" style="display:none;">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+    <h2>Admin Dashboard - Pending Requests</h2>
+    <table id="adminTable">
+        <thead>
+            <tr>
+                <th>Time/Day</th>
+                <th>Request</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="adminRequestsBody">
+            <!-- Admin will approve/reject requests here -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+const users = {
+    "2020103263": "2020103263",
+    "prof1": "prof1",
+    "admin1": "admin1"
+};
+
+const userTypes = {
+    "2020103263": "student",
+    "prof1": "professor",
+    "admin1": "admin"
+};
+
+let currentUser = "";
+let scheduleData = {};
+let pendingRequests = {};
+
+document.getElementById('showPass').addEventListener('change', function() {
+    const passInput = document.getElementById('password');
+    passInput.type = this.checked ? 'text' : 'password';
+});
+
+function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    if (users[username] && users[username] === password) {
+        currentUser = username;
+        if (userTypes[currentUser] === "admin") {
+            document.getElementById('loginPage').style.display = "none";
+            document.getElementById('adminDashboardPage').style.display = "flex";
+            loadAdminRequests();
+        } else {
+            document.getElementById('loginPage').style.display = "none";
+            document.getElementById('schedulerPage').style.display = "flex";
+            document.getElementById('banner').style.display = "block";
+            loadSchedule();
+        }
+    } else {
+        alert("Invalid username or password. Try again!");
+    }
+}
+
+function logout() {
+    currentUser = "";
+    document.getElementById('loginPage').style.display = "flex";
+    document.getElementById('schedulerPage').style.display = "none";
+    document.getElementById('adminDashboardPage').style.display = "none";
+    document.getElementById('banner').style.display = "none";
+}
+
+function loadSchedule() {
+    const scheduleBody = document.getElementById('scheduleBody');
+    scheduleBody.innerHTML = '';
+
+    const timeSlots = ['7:00-9:00', '9:00-11:00', '11:00-1:00', '1:00-3:00', '3:00-5:00'];
+
+    timeSlots.forEach(time => {
+        const row = document.createElement('tr');
+        let th = document.createElement('th');
+        th.innerText = time;
+        row.appendChild(th);
+
+        ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].forEach(day => {
+            let td = document.createElement('td');
+            td.innerText = scheduleData[day]?.[time]?.text || "Available";
+            td.className = scheduleData[day]?.[time]?.status || "available";
+
+            if (userTypes[currentUser] === "professor") {
+                td.addEventListener('click', function() {
+                    let className = prompt("Enter Class Name:");
+                    if (className) {
+                        scheduleData[day] = scheduleData[day] || {};
+                        scheduleData[day][time] = {text: className + " (Pending)", status: "pending"};
+                        loadSchedule();
+                        // Add to admin pending requests
+                        pendingRequests[time] = {day: day, className: className};
+                    }
+                });
+            }
+            row.appendChild(td);
+        });
+        scheduleBody.appendChild(row);
+    });
+}
+
+function loadAdminRequests() {
+    const adminRequestsBody = document.getElementById('adminRequestsBody');
+    adminRequestsBody.innerHTML = '';
+
+    Object.keys(pendingRequests).forEach(time => {
+        const request = pendingRequests[time];
+        const row = document.createElement('tr');
+
+        let th = document.createElement('th');
+        th.innerText = `${time} - ${request.day}`;
+        row.appendChild(th);
+
+        let td = document.createElement('td');
+        td.innerText = request.className;
+        row.appendChild(td);
+
+        let actionTd = document.createElement('td');
+        let approveBtn = document.createElement('button');
+        approveBtn.className = 'approve-btn';
+        approveBtn.innerText = 'Approve';
+        approveBtn.onclick = () => handleRequest(time, 'approved');
+        let rejectBtn = document.createElement('button');
+        rejectBtn.className = 'reject-btn';
+        rejectBtn.innerText = 'Reject';
+        rejectBtn.onclick = () => handleRequest(time, 'rejected');
+
+        actionTd.appendChild(approveBtn);
+        actionTd.appendChild(rejectBtn);
+
+        row.appendChild(actionTd);
+
+        adminRequestsBody.appendChild(row);
+    });
+}
+
+function handleRequest(time, action) {
+    if (action === 'approved') {
+        const request = pendingRequests[time];
+        scheduleData[request.day] = scheduleData[request.day] || {};
+        scheduleData[request.day][time] = {text: request.className + " (Approved)", status: "own-schedule"};
+    }
+    delete pendingRequests[time];
+    loadSchedule();
+    loadAdminRequests();
+}
+</script>
+
+</body>
+</html>
